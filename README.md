@@ -176,7 +176,7 @@ Our winning submission uses a stratified late-fusion ensemble:
      --output stratified_group1.csv
    ```
    The script removes invalid `tool` messages, truncates long traces, retries with Gemini, extracts `[FinalAnswer]` tags (or falls back to A/B/C/D heuristics), and supports multiprocessing via `--num_workers`.
-4. **Late fusion** – Majority vote across Analyst outputs (choices + rationales). Use `gemini/run_final_step_with_gemini_toolsum.py` or a notebook to combine `stratified_group*.csv`, then package the final Kaggle ZIP.
+4. **Late fusion** – Majority vote across Analyst outputs (choices + rationales). Combine `stratified_group*.csv`, and package the final Kaggle ZIP.
 
 This topology prevents the early information bottleneck noted in Tech Report (§Methods, Fig. 3) and underpins our Track 2 results.
 
