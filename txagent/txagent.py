@@ -63,8 +63,8 @@ class TxAgent:
         self.init_rag_num = init_rag_num
         self.step_rag_num = step_rag_num
         # ==================== NEW PARAMETER START ====================
-        self.tool_content_summary_threshold = tool_content_summary_threshold # Threshold to trigger summarization for long tool outputs
-        self.summary_temperature = summary_temperature # Temperature for summary agent
+        self.tool_content_summary_threshold = tool_content_summary_threshold  # Threshold to trigger summarization for long tool outputs
+        self.summary_temperature = summary_temperature  # Temperature for summary agent
         print(f"\033[31mSummary temperature: {self.summary_temperature}\033[0m")
         self.summary_model_name = summary_model_name
         # ==================== NEW PARAMETER END ======================
@@ -76,18 +76,18 @@ class TxAgent:
         self.print_self_values()
         self.init_summary_model()
 
-    # 初始化最终用于summary的模型
+    # Initialize the model used for summary.
     def init_summary_model(self):
         """
-        初始化用于最终summary的模型。
-        可以在__init__中通过self.summary_model_name等参数进行配置。
+        Initialize the model used for final summary.
+        Configuration can be specified in __init__ with self.summary_model_name, etc.
         """
         try:
             from .eval_framework import GeminiModel
-            # 如果 summary_model_name 为 None，则不初始化 summary_model
+            # If summary_model_name is None, do not initialize summary_model
             if getattr(self, "summary_model_name", None) is None:
                 self.summary_model = None
-                print(f"\033[31mSummary模型未初始化，因为 summary_model_name=None\033[0m")
+                print(f"\033[31mSummary model not initialized because summary_model_name=None\033[0m")
             else:
                 self.summary_model = GeminiModel(
                     model_name=getattr(self, "summary_model_name", "gemini-2.5-pro"),
@@ -95,9 +95,9 @@ class TxAgent:
                     google_search_enabled=True,
                 )
                 self.summary_model.load()
-                print(f"\033[31mSummary模型：{self.summary_model_name}初始化成功\033[0m")
+                print(f"\033[31mSummary model: {self.summary_model_name} initialized successfully\033[0m")
         except Exception as e:
-            print(f"\033[31mSummary模型初始化失败: {e}\033[0m")
+            print(f"\033[31mFailed to initialize summary model: {e}\033[0m")
             self.summary_model = None
 
     def init_model(self):
@@ -114,11 +114,11 @@ class TxAgent:
         for m in messages:
             m = dict(m)
 
-            # 1) content 必须是字符串
+            # 1) content must be a string
             if not isinstance(m.get("content"), str):
                 m["content"] = json.dumps(m["content"], ensure_ascii=False)
 
-            # 2) tool_calls: 字符串 -> list[dict{name, arguments}]
+            # 2) tool_calls: string -> list[dict{name, arguments}]
             tc = m.get("tool_calls")
             if isinstance(tc, str):
                 try:
@@ -130,7 +130,7 @@ class TxAgent:
                 for item in tc:
                     if not isinstance(item, dict):
                         continue
-                    # 兼容 {"function": {"name":..., "arguments":...}}
+                    # Compatible with {"function": {"name":..., "arguments":...}}
                     if "function" in item and isinstance(item["function"], dict):
                         name = item["function"].get("name")
                         args = item["function"].get("arguments") or item["function"].get("parameters") or {}
@@ -139,7 +139,7 @@ class TxAgent:
                         args = item.get("arguments") or item.get("parameters") or {}
                     if not name:
                         continue
-                    # arguments 需可 JSON 序列化
+                    # arguments must be JSON serializable
                     if not isinstance(args, (dict, str)):
                         try:
                             args = dict(args)
@@ -151,7 +151,7 @@ class TxAgent:
                 m["tool_calls"] = []
             norm_msgs.append(m)
 
-        # 3) tools: 纯 JSON & properties 兜底
+        # 3) tools: pure JSON & fallback for properties
         norm_tools = []
         for t in tools or []:
             t = dict(t)
@@ -486,7 +486,7 @@ class TxAgent:
                         )[-1]
                         conversation.append({"role": "assistant", "content": final_answer})
                         
-                        return final_answer,conversation
+                        return final_answer, conversation
 
                     if (self.enable_summary or token_overflow) and not call_agent:
                         if token_overflow:
@@ -592,7 +592,7 @@ class TxAgent:
             seed=seed if seed is not None else self.seed,
         )
         # import pdb; pdb.set_trace()
-        # 只有当模型类型是qwen时才调用normalize_for_qwen
+        # Only call normalize_for_qwen if model type is qwen
         if self.model_name and "qwen" in self.model_name.lower():
             messages, tools = self.normalize_for_qwen(messages, tools)
         prompt = self.chat_template.render(messages=messages, tools=tools, add_generation_prompt=True)
@@ -606,7 +606,7 @@ class TxAgent:
             )
             if max_token is not None:
                 if num_input_tokens > max_token:
-                    empty_cache()  # 使用GPU兼容的缓存清理
+                    empty_cache()  # Use GPU-compatible cache clearing
                     gc.collect()
                     print("Number of input tokens before inference:", num_input_tokens)
                     print("The number of tokens exceeds the maximum limit!!!!")
