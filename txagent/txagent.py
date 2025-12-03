@@ -30,6 +30,10 @@ class TxAgent:
         summary_mode="step",
         summary_skip_last_k=0,
         summary_context_length=None,
+        tool_content_summary_threshold=20000,
+        summary_model_name=None,
+        # summary_model_name="gemini-2.5-pro",
+        summary_temperature=0.1,
         force_finish=True,
         avoid_repeat=True,
         seed=None,
@@ -46,7 +50,8 @@ class TxAgent:
         self.rag_model = ToolRAGModel(rag_model_name)
         self.tooluniverse = None
         # self.tool_desc = None
-        self.prompt_multi_step = "You are a helpful assistant that will solve problems through detailed, step-by-step reasoning and actions based on your reasoning. Typically, your actions will use the provided functions. You have access to the following functions."
+        self.prompt_multi_step = 'You are a helpful assistant that will solve problems through detailed, step-by-step reasoning and actions based on your reasoning. Typically, your actions will use the provided functions. You have access to the following functions.Given the following functions, please respond with a JSON for a list of function calls with its proper arguments that best answers the given prompt.\n\nRespond in the format:[{"name": function name, "parameters": dictionary of argument name and its value}]. Do not use variables.\n\n'
+
         self.self_prompt = "Strictly follow the instruction."
         self.chat_prompt = "You are helpful assistant to chat with the user."
         self.enable_finish = enable_finish
@@ -57,12 +62,43 @@ class TxAgent:
         self.summary_context_length = summary_context_length
         self.init_rag_num = init_rag_num
         self.step_rag_num = step_rag_num
+        # ==================== NEW PARAMETER START ====================
+        self.tool_content_summary_threshold = tool_content_summary_threshold # Threshold to trigger summarization for long tool outputs
+        self.summary_temperature = summary_temperature # Temperature for summary agent
+        print(f"\033[31mSummary temperature: {self.summary_temperature}\033[0m")
+        self.summary_model_name = summary_model_name
+        # ==================== NEW PARAMETER END ======================
         self.force_finish = force_finish
         self.avoid_repeat = avoid_repeat
         self.seed = seed
         self.enable_checker = enable_checker
         self.additional_default_tools = additional_default_tools
         self.print_self_values()
+        self.init_summary_model()
+
+    # 初始化最终用于summary的模型
+    def init_summary_model(self):
+        """
+        初始化用于最终summary的模型。
+        可以在__init__中通过self.summary_model_name等参数进行配置。
+        """
+        try:
+            from .eval_framework import GeminiModel
+            # 如果 summary_model_name 为 None，则不初始化 summary_model
+            if getattr(self, "summary_model_name", None) is None:
+                self.summary_model = None
+                print(f"\033[31mSummary模型未初始化，因为 summary_model_name=None\033[0m")
+            else:
+                self.summary_model = GeminiModel(
+                    model_name=getattr(self, "summary_model_name", "gemini-2.5-pro"),
+                    api_key=os.getenv("GEMINI_API_KEY"),
+                    google_search_enabled=True,
+                )
+                self.summary_model.load()
+                print(f"\033[31mSummary模型：{self.summary_model_name}初始化成功\033[0m")
+        except Exception as e:
+            print(f"\033[31mSummary模型初始化失败: {e}\033[0m")
+            self.summary_model = None
 
     def init_model(self):
         self.load_models()
@@ -72,6 +108,59 @@ class TxAgent:
     def print_self_values(self):
         for attr, value in self.__dict__.items():
             print(f"{attr}: {value}")
+
+    def normalize_for_qwen(self, messages, tools):
+        norm_msgs = []
+        for m in messages:
+            m = dict(m)
+
+            # 1) content 必须是字符串
+            if not isinstance(m.get("content"), str):
+                m["content"] = json.dumps(m["content"], ensure_ascii=False)
+
+            # 2) tool_calls: 字符串 -> list[dict{name, arguments}]
+            tc = m.get("tool_calls")
+            if isinstance(tc, str):
+                try:
+                    tc = json.loads(tc)
+                except Exception:
+                    tc = []
+            if isinstance(tc, list):
+                fixed = []
+                for item in tc:
+                    if not isinstance(item, dict):
+                        continue
+                    # 兼容 {"function": {"name":..., "arguments":...}}
+                    if "function" in item and isinstance(item["function"], dict):
+                        name = item["function"].get("name")
+                        args = item["function"].get("arguments") or item["function"].get("parameters") or {}
+                    else:
+                        name = item.get("name")
+                        args = item.get("arguments") or item.get("parameters") or {}
+                    if not name:
+                        continue
+                    # arguments 需可 JSON 序列化
+                    if not isinstance(args, (dict, str)):
+                        try:
+                            args = dict(args)
+                        except Exception:
+                            args = {}
+                    fixed.append({"name": name, "arguments": args})
+                m["tool_calls"] = fixed
+            else:
+                m["tool_calls"] = []
+            norm_msgs.append(m)
+
+        # 3) tools: 纯 JSON & properties 兜底
+        norm_tools = []
+        for t in tools or []:
+            t = dict(t)
+            if "parameter" in t and isinstance(t["parameter"], dict):
+                param = t["parameter"]
+                if param.get("properties") is None:
+                    param["properties"] = {}
+            norm_tools.append(t)
+        return norm_msgs, norm_tools
 
     def load_models(self, model_name=None):
         if model_name is not None:
@@ -228,75 +317,64 @@ class TxAgent:
         call_agent_level=None,
         temperature=None,
     ):
-
-        function_call_json, message = self.tooluniverse.extract_function_call_json(
-            fcall_str, return_message=return_message, verbose=False
-        )
+        # import pdb; pdb.set_trace()
+        # function_call_json, message = self.tooluniverse.extract_function_call_json_from_qwen(fcall_str, return_message=return_message, verbose=False)
+        function_call_json, message = self.tooluniverse.extract_function_call_json(fcall_str, return_message=return_message, verbose=False)
         call_results = []
         special_tool_call = ""
         if function_call_json is not None:
-            if isinstance(function_call_json, list):
-                for i in range(len(function_call_json)):
-                    print("\033[94mTool Call:\033[0m", function_call_json[i])
-                    if function_call_json[i]["name"] == "Finish":
-                        special_tool_call = "Finish"
-                        break
-                    elif function_call_json[i]["name"] == "Tool_RAG":
-                        new_tools_prompt, call_result = self.tool_RAG(
-                            message=message,
-                            existing_tools_prompt=existing_tools_prompt,
-                            rag_num=self.step_rag_num,
-                            return_call_result=True,
-                        )
-                        existing_tools_prompt += new_tools_prompt
-                    elif function_call_json[i]["name"] == "CallAgent":
-                        if call_agent_level < 2 and call_agent:
-                            solution_plan = function_call_json[i]["arguments"][
-                                "solution"
-                            ]
-                            full_message = (
-                                message_for_call_agent
-                                + "\nYou must follow the following plan to answer the question: "
-                                + str(solution_plan)
-                            )
-                            call_result = self.run_multistep_agent(
-                                full_message,
-                                temperature=temperature,
-                                max_new_tokens=1024,
-                                max_token=99999,
-                                call_agent=False,
-                                call_agent_level=call_agent_level,
-                            )
-                            call_result = call_result.split("[FinalAnswer]")[-1].strip()
-                        else:
-                            call_result = "Error: The CallAgent has been disabled. Please proceed with your reasoning process to solve this question."
-                    else:
-                        call_result = self.tooluniverse.run_one_function(
-                            function_call_json[i]
-                        )
+            if not isinstance(function_call_json, list):
+                function_call_json = [function_call_json]
 
-                    call_id = self.tooluniverse.call_id_gen()
-                    function_call_json[i]["call_id"] = call_id
-                    print("\033[94mTool Call Result:\033[0m", call_result)
-                    call_results.append(
-                        {
-                            "role": "tool",
-                            "content": json.dumps(
-                                {"content": call_result, "call_id": call_id}
-                            ),
-                        }
+            for i in range(len(function_call_json)):
+                print("\033[94mTool Call:\033[0m", function_call_json[i])
+                if function_call_json[i]["name"] == "Finish":
+                    special_tool_call = "Finish"
+                    break
+                elif function_call_json[i]["name"] == "Tool_RAG":
+                    new_tools_prompt, call_result = self.tool_RAG(message=message,existing_tools_prompt=existing_tools_prompt,rag_num=self.step_rag_num,return_call_result=True,)
+                    existing_tools_prompt += new_tools_prompt
+                elif function_call_json[i]["name"] == "CallAgent":
+                    if call_agent_level < 2 and call_agent:
+                        solution_plan = function_call_json[i]["arguments"][
+                            "solution"
+                        ]
+                        full_message = (
+                            message_for_call_agent
+                            + "\nYou must follow the following plan to answer the question: "
+                            + str(solution_plan)
+                        )
+                        call_result = self.run_multistep_agent(
+                            full_message,
+                            temperature=temperature,
+                            max_new_tokens=1024,
+                            max_token=99999,
+                            call_agent=False,
+                            call_agent_level=call_agent_level,
+                        )
+                        call_result = call_result.split("[FinalAnswer]")[-1].strip()
+                    else:
+                        call_result = "Error: The CallAgent has been disabled. Please proceed with your reasoning process to solve this question."
+                else:
+                    call_result = self.tooluniverse.run_one_function(
+                        function_call_json[i]
                     )
+
+                call_id = self.tooluniverse.call_id_gen()
+                function_call_json[i]["call_id"] = call_id
+                print("\033[94mTool Call Result:\033[0m", call_result)
+                if call_result is None:
+                    continue
+                call_results.append(
+                    {
+                        "role": "tool",
+                        "content": json.dumps(
+                            {"content": call_result, "call_id": call_id}
+                        ),
+                    }
+                )
         else:
-            call_results.append(
-                {
-                    "role": "tool",
-                    "content": json.dumps(
-                        {
-                            "content": "Not a valid function call, please check the function call format."
-                        }
-                    ),
-                }
-            )
+            return None, existing_tools_prompt, special_tool_call
 
         revised_messages = [
             {
@@ -308,147 +386,6 @@ class TxAgent:
 
         # Yield the final result.
         return revised_messages, existing_tools_prompt, special_tool_call
-
-    def run_function_call_stream(
-        self,
-        fcall_str,
-        return_message=False,
-        existing_tools_prompt=None,
-        message_for_call_agent=None,
-        call_agent=False,
-        call_agent_level=None,
-        temperature=None,
-        return_gradio_history=True,
-    ):
-
-        function_call_json, message = self.tooluniverse.extract_function_call_json(
-            fcall_str, return_message=return_message, verbose=False
-        )
-        call_results = []
-        special_tool_call = ""
-        if return_gradio_history:
-            gradio_history = []
-        if function_call_json is not None:
-            if isinstance(function_call_json, list):
-                for i in range(len(function_call_json)):
-                    if function_call_json[i]["name"] == "Finish":
-                        special_tool_call = "Finish"
-                        break
-                    elif function_call_json[i]["name"] == "Tool_RAG":
-                        new_tools_prompt, call_result = self.tool_RAG(
-                            message=message,
-                            existing_tools_prompt=existing_tools_prompt,
-                            rag_num=self.step_rag_num,
-                            return_call_result=True,
-                        )
-                        existing_tools_prompt += new_tools_prompt
-                    elif function_call_json[i]["name"] == "DirectResponse":
-                        call_result = function_call_json[i]["arguments"]["respose"]
-                        special_tool_call = "DirectResponse"
-                    elif function_call_json[i]["name"] == "RequireClarification":
-                        call_result = function_call_json[i]["arguments"][
-                            "unclear_question"
-                        ]
-                        special_tool_call = "RequireClarification"
-                    elif function_call_json[i]["name"] == "CallAgent":
-                        if call_agent_level < 2 and call_agent:
-                            solution_plan = function_call_json[i]["arguments"][
-                                "solution"
-                            ]
-                            full_message = (
-                                message_for_call_agent
-                                + "\nYou must follow the following plan to answer the question: "
-                                + str(solution_plan)
-                            )
-                            sub_agent_task = "Sub TxAgent plan: " + str(solution_plan)
-                            # When streaming, yield responses as they arrive.
-                            call_result = yield from self.run_gradio_chat(
-                                full_message,
-                                history=[],
-                                temperature=temperature,
-                                max_new_tokens=1024,
-                                max_token=99999,
-                                call_agent=False,
-                                call_agent_level=call_agent_level,
-                                conversation=None,
-                                sub_agent_task=sub_agent_task,
-                            )
-
-                            call_result = call_result.split("[FinalAnswer]")[-1]
-                        else:
-                            call_result = "Error: The CallAgent has been disabled. Please proceed with your reasoning process to solve this question."
-                    else:
-                        call_result = self.tooluniverse.run_one_function(
-                            function_call_json[i]
-                        )
-
-                    call_id = self.tooluniverse.call_id_gen()
-                    function_call_json[i]["call_id"] = call_id
-                    call_results.append(
-                        {
-                            "role": "tool",
-                            "content": json.dumps(
-                                {"content": call_result, "call_id": call_id}
-                            ),
-                        }
-                    )
-                    if (
-                        return_gradio_history
-                        and function_call_json[i]["name"] != "Finish"
-                    ):
-                        if function_call_json[i]["name"] == "Tool_RAG":
-                            gradio_history.append(
-                                ChatMessage(
-                                    role="assistant",
-                                    content=str(call_result),
-                                    metadata={
-                                        "title": "🧰 " + function_call_json[i]["name"],
-                                        "log": str(function_call_json[i]["arguments"]),
-                                    },
-                                )
-                            )
-
-                        else:
-                            gradio_history.append(
-                                ChatMessage(
-                                    role="assistant",
-                                    content=str(call_result),
-                                    metadata={
-                                        "title": "⚒️ " + function_call_json[i]["name"],
-                                        "log": str(function_call_json[i]["arguments"]),
-                                    },
-                                )
-                            )
-        else:
-            call_results.append(
-                {
-                    "role": "tool",
-                    "content": json.dumps(
-                        {
-                            "content": "Not a valid function call, please check the function call format."
-                        }
-                    ),
-                }
-            )
-
-        revised_messages = [
-            {
-                "role": "assistant",
-                "content": message.strip(),
-                "tool_calls": json.dumps(function_call_json),
-            }
-        ] + call_results
-
-        # Yield the final result.
-        if return_gradio_history:
-            return (
-                revised_messages,
-                existing_tools_prompt,
-                special_tool_call,
-                gradio_history,
-            )
-        else:
-            return revised_messages, existing_tools_prompt, special_tool_call
 
     def get_answer_based_on_unfinished_reasoning(
         self,
@@ -522,6 +459,7 @@ class TxAgent:
             while next_round and current_round < max_round:
                 current_round += 1
                 if len(outputs) > 0:
+                    # import pdb; pdb.set_trace()
                     function_call_messages, picked_tools_prompt, special_tool_call = (
                         self.run_function_call(
                             last_outputs,
@@ -543,9 +481,12 @@ class TxAgent:
                             function_call_messages[0]["content"] = next(
                                 function_call_messages[0]["content"]
                             )
-                        return function_call_messages[0]["content"].split(
+                        final_answer = function_call_messages[0]["content"].split(
                             "[FinalAnswer]"
                         )[-1]
+                        conversation.append({"role": "assistant", "content": final_answer})
+                        
+                        return final_answer,conversation
 
                     if (self.enable_summary or token_overflow) and not call_agent:
                         if token_overflow:
@@ -554,7 +495,7 @@ class TxAgent:
                     last_status = self.function_result_summary(
                         conversation, status=last_status, enable_summary=enable_summary
                     )
-
+                    
                     if function_call_messages is not None:
                         conversation.extend(function_call_messages)
                         outputs.append(tool_result_format(function_call_messages))
@@ -563,7 +504,7 @@ class TxAgent:
                         conversation.extend(
                             [{"role": "assistant", "content": "".join(last_outputs)}]
                         )
-                        return "".join(last_outputs).replace("</s>", "")
+                        return "".join(last_outputs).replace("</s>", ""), conversation
                 if self.enable_checker:
                     good_status, wrong_info = checker.check_conversation()
                     if not good_status:
@@ -572,6 +513,8 @@ class TxAgent:
                         break
                 last_outputs = []
                 outputs.append("### TxAgent:\n")
+                # import pdb; pdb.set_trace()
+                # last_outputs_str, token_overflow = self.llm_infer(messages=conversation,temperature=temperature,tools=picked_tools_prompt, skip_special_tokens=False, max_new_tokens=max_new_tokens,max_token=max_token,check_token_status=True,)
                 last_outputs_str, token_overflow = self.llm_infer(
                     messages=conversation,
                     temperature=temperature,
@@ -591,18 +534,18 @@ class TxAgent:
             if self.force_finish:
                 return self.get_answer_based_on_unfinished_reasoning(
                     conversation, temperature, max_new_tokens, max_token
-                )
+                ), conversation
             else:
-                return None
+                return None, conversation
 
         except Exception as e:
             print(f"Error: {e}")
             if self.force_finish:
                 return self.get_answer_based_on_unfinished_reasoning(
                     conversation, temperature, max_new_tokens, max_token
-                )
+                ), conversation
             else:
-                return None
+                return None, conversation
 
     def build_logits_processor(self, messages, llm):
         # Use the tokenizer from the LLM instance.
@@ -648,10 +591,11 @@ class TxAgent:
             logits_processors=logits_processor,
             seed=seed if seed is not None else self.seed,
         )
-
-        prompt = self.chat_template.render(
-            messages=messages, tools=tools, add_generation_prompt=True
-        )
+        # import pdb; pdb.set_trace()
+        # 只有当模型类型是qwen时才调用normalize_for_qwen
+        if self.model_name and "qwen" in self.model_name.lower():
+            messages, tools = self.normalize_for_qwen(messages, tools)
+        prompt = self.chat_template.render(messages=messages, tools=tools, add_generation_prompt=True)
         if output_begin_string is not None:
             prompt += output_begin_string
 
@@ -678,85 +622,6 @@ class TxAgent:
             return output, token_overflow
 
         return output
-
-    def run_self_agent(
-        self, message: str, temperature: float, max_new_tokens: int, max_token: int
-    ) -> str:
-
-        print("\033[1;32;40mstart self agent\033[0m")
-        conversation = []
-        conversation = self.set_system_prompt(conversation, self.self_prompt)
-        conversation.append({"role": "user", "content": message})
-        return self.llm_infer(
-            messages=conversation,
-            temperature=temperature,
-            tools=None,
-            max_new_tokens=max_new_tokens,
-            max_token=max_token,
-        )
-
-    def run_chat_agent(
-        self, message: str, temperature: float, max_new_tokens: int, max_token: int
-    ) -> str:
-
-        print("\033[1;32;40mstart chat agent\033[0m")
-        conversation = []
-        conversation = self.set_system_prompt(conversation, self.chat_prompt)
-        conversation.append({"role": "user", "content": message})
-        return self.llm_infer(
-            messages=conversation,
-            temperature=temperature,
-            tools=None,
-            max_new_tokens=max_new_tokens,
-            max_token=max_token,
-        )
-
-    def run_format_agent(
-        self,
-        message: str,
-        answer: str,
-        temperature: float,
-        max_new_tokens: int,
-        max_token: int,
-    ) -> str:
-
-        print("\033[1;32;40mstart format agent\033[0m")
-        if "[FinalAnswer]" in answer:
-            possible_final_answer = answer.split("[FinalAnswer]")[-1]
-        elif "\n\n" in answer:
-            possible_final_answer = answer.split("\n\n")[-1]
-        else:
-            possible_final_answer = answer.strip()
-        if len(possible_final_answer) == 1:
-            choice = possible_final_answer[0]
-            if choice in ["A", "B", "C", "D", "E"]:
-                return choice
-        elif len(possible_final_answer) > 1:
-            if possible_final_answer[1] == ":":
-                choice = possible_final_answer[0]
-                if choice in ["A", "B", "C", "D", "E"]:
-                    print("choice", choice)
-                    return choice
-
-        conversation = []
-        format_prompt = f"You are helpful assistant to transform the answer of agent to the final answer of 'A', 'B', 'C', 'D'."
-        conversation = self.set_system_prompt(conversation, format_prompt)
-        conversation.append(
-            {
-                "role": "user",
-                "content": message
-                + "\nThe final answer of agent:"
-                + answer
-                + "\n The answer is (must be a letter):",
-            }
-        )
-        return self.llm_infer(
-            messages=conversation,
-            temperature=temperature,
-            tools=None,
-            max_new_tokens=max_new_tokens,
-            max_token=max_token,
-        )
 
     def run_summary_agent(
         self,
