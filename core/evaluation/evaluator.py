@@ -51,20 +51,20 @@ class Evaluator:
         
         if self.verbose:
             print("\n" + "="*80)
-            print("🔍 开始评估 - 详细结果输出")
+            print("🔍 Start evaluation - Detailed results output")
             print("="*80)
         else:
             print("\n" + "="*80)
-            print("🔍 开始评估 - 仅显示工具调用信息")
+            print("🔍 Start evaluation - Only show tool call information")
             print("="*80)
         
-        # 添加总计时
+        # Add total timing
         import time
         total_start_time = time.time()
         
         for i, example in enumerate(tqdm(dataset, desc="Evaluating", unit="example")):
             try:
-                # 记录单个样本开始时间
+                # Record single sample start time
                 sample_start_time = time.time()
                 
                 prediction, reasoning_trace, detailed_info = self._evaluate_single_example(example)
@@ -82,10 +82,10 @@ class Evaluator:
                     if is_correct:
                         accuracy_correct_count += 1
                 
-                # 计算单个样本耗时
+                # Calculate single sample elapsed time
                 sample_time = time.time() - sample_start_time
                 
-                # Print result based on verbose mode - 使用 tqdm.write 避免覆盖进度条
+                # Print result based on verbose mode - Use tqdm.write to avoid overriding progress bar
                 if self.verbose:
                     self._print_example_result(detailed_info, i + 1, len(dataset), sample_time)
                 else:
@@ -121,7 +121,7 @@ class Evaluator:
         accuracy = (accuracy_correct_count / accuracy_total_count 
                    if accuracy_total_count > 0 else 0.0)
         
-        # 计算总耗时
+        # Calculate total elapsed time
         total_time = time.time() - total_start_time
         
         metrics = EvaluationMetrics(
@@ -136,14 +136,14 @@ class Evaluator:
         
         # Print final summary
         print("\n" + "="*80)
-        print("📊 评估完成 - 总体统计")
+        print("📊 Evaluation Complete - Overall Statistics")
         print("="*80)
-        print(f"🎯 总测试样本数: {len(dataset)}（除open_ended以外样本数: {accuracy_total_count}）")
-        print(f"✅ 正确答案数: {accuracy_correct_count}")
-        print(f"❌ 错误答案数: {accuracy_total_count - accuracy_correct_count}")
-        print(f"📈 准确率: {accuracy:.2%}")
-        print(f"⏱️  总耗时: {total_time:.2f} 秒")
-        print(f"🚀 平均每样本耗时: {total_time/len(dataset):.2f} 秒")
+        print(f"🎯 Total test samples: {len(dataset)} (excluding open_ended samples: {accuracy_total_count})")
+        print(f"✅ Number of correct answers: {accuracy_correct_count}")
+        print(f"❌ Number of incorrect answers: {accuracy_total_count - accuracy_correct_count}")
+        print(f"📈 Accuracy: {accuracy:.2%}")
+        print(f"⏱️  Total elapsed time: {total_time:.2f} seconds")
+        print(f"🚀 Average time per sample: {total_time/len(dataset):.2f} seconds")
         print("="*80)
         
         self.logger.info(f"Evaluation completed: {accuracy:.2%} accuracy "
@@ -154,26 +154,26 @@ class Evaluator:
     def _print_example_result(self, detailed_info: Dict[str, Any], example_num: int, total_examples: int, sample_time: float = 0.0):
         """Print detailed result for a single example"""
         from tqdm import tqdm
-        tqdm.write(f"\n📝 测试样本 {example_num}/{total_examples} (耗时: {sample_time:.2f}s)")
+        tqdm.write(f"\n📝 Test sample {example_num}/{total_examples} (Time: {sample_time:.2f}s)")
         tqdm.write("-" * 60)
         tqdm.write(f"🆔 ID: {detailed_info['id']}")
-        tqdm.write(f"📋 问题类型: {detailed_info['question_type']}")
-        tqdm.write(f"❓ 问题: {detailed_info['question'][:100]}{'...' if len(detailed_info['question']) > 100 else ''}")
-        tqdm.write(f"✅ 期望答案: {detailed_info['expected_answer']}")
-        tqdm.write(f"🤖 模型答案: {detailed_info['final_answer']}")
+        tqdm.write(f"📋 Question type: {detailed_info['question_type']}")
+        tqdm.write(f"❓ Question: {detailed_info['question'][:100]}{'...' if len(detailed_info['question']) > 100 else ''}")
+        tqdm.write(f"✅ Expected answer: {detailed_info['expected_answer']}")
+        tqdm.write(f"🤖 Model answer: {detailed_info['final_answer']}")
         
         # Show correctness with emoji
         if detailed_info['is_correct']:
-            tqdm.write(f"🎯 结果: ✅ 正确")
+            tqdm.write(f"🎯 Result: ✅ Correct")
         else:
-            tqdm.write(f"🎯 结果: ❌ 错误")
+            tqdm.write(f"🎯 Result: ❌ Incorrect")
         
         tqdm.write("=" * 60)
     
     def _print_tool_calls(self, reasoning_trace, example_num: int, total_examples: int, sample_time: float = 0.0):
         """Print only tool call information for a single example"""
         from tqdm import tqdm
-        tqdm.write(f"\n🔧 测试样本 {example_num}/{total_examples} (耗时: {sample_time:.2f}s)")
+        tqdm.write(f"\n🔧 Test sample {example_num}/{total_examples} (Time: {sample_time:.2f}s)")
         tqdm.write("-" * 40)
         
         # Extract tool calls from reasoning trace
@@ -275,11 +275,11 @@ class Evaluator:
     
     def _format_prompt(self, question: str, question_type: str) -> str:
         """Format prompt based on question type"""
-        if question_type == "multi_choice":
+        if question_type in ["multi_choice", "open_ended_multi_choice"]:
             return (f"The following is a multiple choice question about medicine. "
                    f"Answer with only the letter (A, B, C, D, or E).\n\n"
                    f"Question: {question}\n\nAnswer:")
-        elif question_type in ["open_ended_multi_choice", "open_ended"]:
+        elif question_type in ["open_ended"]:
             return (f"The following is an open-ended question about medicine. "
                    f"Provide a comprehensive answer.\n\n"
                    f"Question: {question}\n\nAnswer:")
@@ -358,51 +358,51 @@ class Evaluator:
 
     def _extract_multiple_choice_answer(self, prediction: str) -> str:
         """
-        从prediction文本中提取Answer后面的A/B/C/D
-        结合evaluator.py中的提取逻辑，确保能处理各种格式
+        Extract A/B/C/D after "Answer" from the prediction text.
+        Combine the extraction logic in evaluator.py to handle various formats.
         
         Args:
-            prediction (str): 包含Answer的预测文本
+            prediction (str): Prediction text containing Answer.
             
         Returns:
-            str: 提取的choice (A/B/C/D) 或原choice如果无法提取
+            str: Extracted choice (A/B/C/D) or the original choice if unable to extract.
         """
         if not prediction:
             return ""
                     
-        # 转换为大写以便处理
+        # Convert to uppercase for processing
         response = prediction.strip().upper()
         
-        # 方法1: 检查响应开头是否有字母 (来自evaluator.py)
+        # Method 1: Check if letter appears at the beginning (from evaluator.py)
         m = re.match(r"^\s*([ABCD])(?:[\)\.\:\-]\s|\s*$)", response)
         if m:
             return m.group(1)
         
-        # 方法2: 查找 "Answer:" 后面的内容 (优先处理示例格式)
+        # Method 2: Find content after "Answer:" (priority for example format)
         answer_pattern = r'Answer:\s*\(?([A-D])\)?'
         match = re.search(answer_pattern, response)
         if match:
             return match.group(1)
         
-        # 方法3: 查找 "Answer" 后面的内容（没有冒号）
+        # Method 3: Find content after "Answer" (no colon)
         answer_pattern2 = r'Answer\s+\(?([A-D])\)?'
         match = re.search(answer_pattern2, response)
         if match:
             return match.group(1)
         
-        # 方法4: 查找 [FinalAnswer] 后面的内容
+        # Method 4: Find content after [FinalAnswer]
         final_answer_pattern = r'\[FinalAnswer\]\s+([A-D])'
         match = re.search(final_answer_pattern, response)
         if match:
             return match.group(1)
         
-        # 方法5: 查找以字母开头的行，如 "D: No treatment..." (处理示例格式2)
+        # Method 5: Find a line starting with the letter, e.g., "D: No treatment..." (handle example format 2)
         line_pattern = r'^([A-D]):\s*'
         match = re.search(line_pattern, response, re.MULTILINE)
         if match:
             return match.group(1)
         
-        # 方法6-9: 使用evaluator.py中的模式 (按优先级顺序)
+        # Methods 6-9: Use patterns from evaluator.py (priority order)
         patterns = [
             # NEW: align/match/correspond patterns
             r"(?:ALIGNS?\s+WITH|MATCH(?:ES)?|CORRESPONDS?\s+TO)\s+(?:OPTION\s*)?([ABCD])\b",
@@ -415,7 +415,7 @@ class Evaluator:
         for pattern in patterns:
             matches = list(re.finditer(pattern, response))
             if matches:
-                return matches[-1].group(1)  # 取最后一个匹配 (与evaluator.py一致)
+                return matches[-1].group(1)  # Take the last match (same as evaluator.py)
     
         return None
 

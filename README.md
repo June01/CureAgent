@@ -97,7 +97,7 @@ Replicate for `curebench_testset_phase2.jsonl` when generating final submissions
 
 ### Open-source (agentic + internal reasoning)
 | Model | Type | Tools | Config |
-| --- | --- | --- | --- |
+| :---: | :---: | :---: | :---: |
 | TxAgent (Llama-3.1-8B) | Agentic | ✅ | `metadata_config_testset_phase2_txagent.json` |
 | Llama-3.1-8B / 70B | Internal | ❌ | `metadata_config_testset_phase2_llama3_8b.json` |
 | Llama3-Med42-8B | Internal | ❌ | `metadata_config_testset_phase2_llama3_med42_8b.json` |
@@ -109,9 +109,9 @@ Replicate for `curebench_testset_phase2.jsonl` when generating final submissions
 
 ### Closed-source (Gemini)
 | Model | Type | Search | 
-| --- | --- | --- | 
-| gemini-2.5-flash | API | optional |
-| gemini-2.5-pro | API | optional | 
+| :---: | :---: | :---: | 
+| gemini-2.5-flash | API | ✅ |
+| gemini-2.5-pro | API | ✅ | 
 | gemini-3-pro-preview* | API | ✅ |  
 
 \*Post-competition benchmark used to validate scalability (see Tech report Table 2).
