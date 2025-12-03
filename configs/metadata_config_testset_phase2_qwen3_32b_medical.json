@@ -1,0 +1,31 @@
+{
+  "metadata": {
+    "model_type": "qwen",
+    "model_name": "nicoboss/Qwen-3-32B-Medical-Reasoning",
+    "track": "internal_reasoning",
+    "base_model_type": "API",
+    "base_model_name": "nicoboss/Qwen-3-32B-Medical-Reasoning",
+    "dataset": "cure_bench_phase_2",
+    "additional_info": "Qwen3 32B Medical Reasoning model for CURE-Bench phase 2 testset",
+    "gpu_memory_utilization": 0.8,
+    "tensor_parallel_size": 1,
+    "dtype": "float16",
+    "temperature": 0.8,
+    "max_new_tokens": 65536,
+    "top_p": 0.9,
+    "top_k": 50,
+    "repetition_penalty": 1.1,
+    "enable_checker": false,
+    "step_rag_num": 10,
+    "max_round": 20,
+    "multiagent": false
+  },
+  "dataset": {
+    "dataset_name": "cure_bench_phase_2",
+    "dataset_path": "dataset/curebench_testset_phase2.jsonl",
+    "description": "CureBench 2025 phase2 test questions (Qwen3-32B Medical config)"
+  },
+  "output_dir": "results/competition_testset_phase1_qwen3_32b_medical"
+}
+
+

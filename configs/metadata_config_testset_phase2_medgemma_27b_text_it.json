@@ -1,0 +1,30 @@
+{
+  "metadata": {
+    "model_name": "google/medgemma-27b-text-it",
+    "model_type": "medgemma",
+    "track": "internal_reasoning",
+    "base_model_type": "API",
+    "base_model_name": "google/medgemma-27b-text-it",
+    "dataset": "cure_bench_phase_2",
+    "additional_info": "MedGemma 27B text-only model for CURE-Bench phase 2 testset",
+    "temperature": 0.8,
+    "max_new_tokens": 2048,
+    "top_p": 0.9,
+    "top_k": 50,
+    "repetition_penalty": 1.1,
+    "torch_dtype": "bfloat16",
+    "device_map": "auto",
+    "enable_checker": false,
+    "step_rag_num": 10,
+    "max_round": 20,
+    "multiagent": false
+  },
+  "dataset": {
+    "dataset_name": "cure_bench_phase_2",
+    "dataset_path": "dataset/curebench_testset_phase2.jsonl",
+    "description": "CureBench 2025 phase2 test questions (MedGemma-27B-Text-IT config)"
+  },
+  "output_dir": "results/competition_testset_phase2_medgemma_27b_text_it"
+}
+
+

@@ -1,0 +1,24 @@
+{
+  "metadata": {
+    "model_name": "mims-harvard/TxAgent-T1-Llama-3.1-8B",
+    "model_type": "txagent",
+    "track": "internal_reasoning",
+    "base_model_type": "API",
+    "base_model_name": "mims-harvard/TxAgent-T1-Llama-3.1-8B",
+    "dataset": "cure_bench_phase_2",
+    "additional_info": "Submission using configuration file",
+    "enable_checker": true,
+    "step_rag_num": 10,
+    "temperature": 0.8,
+    "max_new_tokens": 4096,
+    "max_token": 65536,
+    "max_round": 20,
+    "multiagent": false
+  },
+    "dataset": {
+      "dataset_name": "cure_bench_phase_2",
+      "dataset_path": "dataset/curebench_testset_phase2.jsonl",
+      "description": "CureBench 2025 phase2 test questions"
+    },
+    "output_dir": "results/competition_testset_phase2_txagent"
+  }

@@ -1,0 +1,32 @@
+{
+  "metadata": {
+    "model_type": "llama",
+    "model_name": "m42-health/Llama3-Med42-8B",
+    "track": "internal_reasoning",
+    "base_model_type": "API",
+    "base_model_name": "m42-health/Llama3-Med42-8B",
+    "dataset": "cure_bench_phase_2",
+    "additional_info": "Llama3-Med42-8B model for CURE-Bench phase 2 testset",
+    "gpu_memory_utilization": 0.8,
+    "tensor_parallel_size": 1,
+    "dtype": "float16",
+    "temperature": 0.8,
+    "max_new_tokens": 2048,
+    "max_token": 65536,
+    "top_p": 0.9,
+    "top_k": 50,
+    "repetition_penalty": 1.1,
+    "enable_checker": false,
+    "step_rag_num": 10,
+    "max_round": 20,
+    "multiagent": false
+  },
+  "dataset": {
+    "dataset_name": "cure_bench_phase_2",
+    "dataset_path": "../phase2-result/dataset/curebench_testset_phase1_rm_open_ended_multichoice.jsonl",
+    "description": "CureBench 2025 phase2 test questions (Llama3-Med42-8B config)"
+  },
+  "output_dir": "results/competition_testset_phase1_llama3_med42_8b_rm_openended_multichoice_0.8"
+}
+
+

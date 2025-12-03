@@ -1,0 +1,18 @@
+{
+  "metadata": {
+    "model_name": "openai/gpt-oss-20b",
+    "model_type": "gpt_oss",
+    "track": "internal_reasoning",
+    "additional_info": "GPT-OSS 20B model for CURE-Bench evaluation",
+    "top_k": 50,
+    "top_p": 0.95,
+    "repetition_penalty": 1.2,
+    "temperature": 0.0,
+    "max_new_tokens": 1024
+  },
+  "dataset": {
+    "dataset_name": "cure_bench_phase_1",
+    "dataset_path": "dataset/curebench_testset_phase2.jsonl"
+  },
+  "output_dir": "results/competition_testset_phase2_gpt_oss_20b"
+}

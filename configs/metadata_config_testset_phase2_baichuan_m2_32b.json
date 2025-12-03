@@ -1,0 +1,32 @@
+{
+  "metadata": {
+    "model_name": "baichuan-inc/Baichuan-M2-32B",
+    "model_type": "baichuan",
+    "track": "internal_reasoning",
+    "base_model_type": "API",
+    "base_model_name": "baichuan-inc/Baichuan-M2-32B",
+    "dataset": "cure_bench_phase_2",
+    "additional_info": "Baichuan-M2-32B model for CURE-Bench phase 2 testset",
+    "enable_checker": false,
+    "step_rag_num": 10,
+    "temperature": 0.8,
+    "max_new_tokens": 8192,
+    "max_token": 40960,
+    "max_round": 20,
+    "multiagent": false,
+    "gpu_memory_utilization": 0.75,
+    "tensor_parallel_size": 1,
+    "dtype": "float16",
+    "top_p": 0.9,
+    "top_k": 50,
+    "repetition_penalty": 1.1
+  },
+  "dataset": {
+    "dataset_name": "cure_bench_phase_2",
+    "dataset_path": "dataset/curebench_testset_phase2.jsonl",
+    "description": "CureBench 2025 phase2 test questions (Baichuan-M2-32B config)"
+  },
+  "output_dir": "results/competition_testset_phase2_baichuan_m2_32b"
+}
+
+

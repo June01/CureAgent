@@ -1,0 +1,49 @@
+{
+    "dataset_path": "dataset/curebench_testset_phase2.jsonl",
+    "model_name": "gemini_2.5_flash",
+    "google_search_enabled": false,
+    "num_workers": 20,
+    "api_key": "your_key",
+    "output_dir": "testset_gemini_2.5_flash_without_search_phase2_results",
+    "log_level": "INFO",
+    "retry_attempts": 3,
+    "retry_delay": 2,
+    "timeout_seconds": 120,
+    "batch_size": 1,
+    "delay_between_requests": 0.5,
+    "max_concurrent_requests": 8,
+    "save_detailed_results": true,
+    "save_metrics_summary": true,
+    "test_subset_size": 20,
+    "full_evaluation": true,
+    "question_types": [
+        "multi_choice",
+        "open_ended",
+        "open_ended_multi_choice"
+    ],
+    "evaluation_settings": {
+        "include_reasoning": true,
+        "extract_final_answer": true,
+        "case_sensitive_matching": false,
+        "allow_partial_matches": false
+    },
+    "output_settings": {
+        "save_responses": true,
+        "save_processing_times": true,
+        "save_error_details": true,
+        "generate_summary_report": true,
+        "create_kaggle_submission": true
+    },
+    "performance_settings": {
+        "enable_progress_tracking": true,
+        "log_individual_results": true,
+        "calculate_type_statistics": true,
+        "measure_processing_speed": true
+    },
+    "search_settings": {
+        "enable_google_search": true,
+        "search_timeout": 30,
+        "max_search_results": 5,
+        "search_language": "en"
+    }
+}
