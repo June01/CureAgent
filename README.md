@@ -13,7 +13,7 @@
 <div align="center" style="line-height: 1; margin-bottom: 12px;">
   <br/>
   | <a href="https://jiaweizzhao.github.io/deepconf/">💻 Code</a> 
-  | <a href="https://arxiv.org/abs/2508.15260">📑 Tech Report</a> 
+  | <a href="https://arxiv.org/abs/25xxx">📑 Tech Report (TBA)</a> 
   <!-- | <a href="figs/overview.ong">📰 Poster</a>  -->
   | <a href="https://curebench.ai/">CURE-Bench</a>
   |
