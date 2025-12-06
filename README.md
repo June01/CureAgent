@@ -27,6 +27,7 @@
 - [Inference](#inference)
 - [Results Snapshot](#results-snapshot)
 - [Acknowledgement](#acknowledgement)
+- [Contact Info](#contact-info)
 - [Citation](#citation)
 
 ## Overview
@@ -190,6 +191,8 @@ This topology prevents the early information bottleneck noted in Tech Report (§
 - AMD for providing GPU resources, and https://www.synapnote.ai/
 - [CUREBench](https://github.com/mims-harvard/CUREBench) — parts of the code are derived from their baseline
 
+## Contact Info
+- helloxietingting@gmail.com
 
 ## Citation
 Please cite the upcoming tech report once the arXiv link is live:
