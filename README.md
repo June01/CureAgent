@@ -199,7 +199,7 @@ Please cite the upcoming tech report once the arXiv link is live:
 ```
 @article{xie2025cureagent,
   title={CureAgent: A Training-Free Executor-Analyst Framework for Clinical Reasoning},
-  author={Xie, Ting-Ting},
+  author={Ting-Ting Xie and Yixin Zhang},
   journal={arXiv preprint (Submitted, waiting for id)},
   year={2025}
 }
