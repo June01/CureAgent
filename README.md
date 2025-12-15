@@ -13,7 +13,7 @@
 <div align="center" style="line-height: 1; margin-bottom: 12px;">
   <br/>
   | <a href="https://jiaweizzhao.github.io/deepconf/">💻 Code</a> 
-  | <a href="https://arxiv.org/abs/25xxx">📑 Tech Report (TBA)</a> 
+  | <a href="https://arxiv.org/pdf/2512.05576">📑 Tech Report</a> 
   <!-- | <a href="figs/overview.ong">📰 Poster</a>  -->
   | <a href="https://curebench.ai/">CURE-Bench</a>
   |
@@ -199,8 +199,8 @@ Please cite the upcoming tech report once the arXiv link is live:
 ```
 @article{xie2025cureagent,
   title={CureAgent: A Training-Free Executor-Analyst Framework for Clinical Reasoning},
-  author={Ting-Ting Xie and Yixin Zhang},
-  journal={arXiv preprint (Submitted, waiting for id)},
+  author={Xie, Ting-Ting and Zhang, Yixin},
+  journal={arXiv preprint arXiv:2512.05576},
   year={2025}
 }
 ```
